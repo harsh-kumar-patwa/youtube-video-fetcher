@@ -2,10 +2,12 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"youtube-video-fetcher/config"
 	"youtube-video-fetcher/database"
 	"youtube-video-fetcher/youtube"
 	"youtube-video-fetcher/worker"
+	"youtube-video-fetcher/api"
 )
 
 func main() {
@@ -29,7 +31,14 @@ func main() {
 	w := worker.NewWorker(db, client, cfg.SearchQuery, cfg.FetchInterval)
 	w.Start()
 
-	log.Printf("Worker started with query '%s' and interval %v. Press Ctrl+C to stop.", cfg.SearchQuery, cfg.FetchInterval)
-	// Keep the main goroutine running
-	select {}
+	// Create API handler
+	handler := api.NewHandler(db)
+
+	// Set up HTTP routes
+	http.HandleFunc("/videos", handler.GetVideos)
+
+	// Start the HTTP server
+	log.Printf("Starting server on %s", cfg.ServerPort)
+	log.Printf("Worker started with query '%s' and interval %v", cfg.SearchQuery, cfg.FetchInterval)
+	log.Fatal(http.ListenAndServe(cfg.ServerPort, nil))
 }
