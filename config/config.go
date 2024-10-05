@@ -2,10 +2,13 @@ package config
 import (
 	"encoding/json"
 	"os"
+	"time"
 )
 
 type Config struct {
 	YouTubeAPIKey string `json:"youtube_api_key"`
+	SearchQuery   string `json:"search_query"`
+	FetchInterval time.Duration `json:"fetch_interval"`
 }
 
 func LoadConfig(file string) (*Config, error) {
@@ -22,5 +25,7 @@ func LoadConfig(file string) (*Config, error) {
 		return nil, err
 	}
 
+	// Convert FetchInterval from seconds to time.Duration
+	config.FetchInterval *= time.Second
 	return &config, nil
 }

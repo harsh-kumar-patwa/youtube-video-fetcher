@@ -2,12 +2,10 @@ package main
 
 import (
 	"log"
-	"time"
-
 	"youtube-video-fetcher/config"
 	"youtube-video-fetcher/database"
-	"youtube-video-fetcher/models"
 	"youtube-video-fetcher/youtube"
+	"youtube-video-fetcher/worker"
 )
 
 func main() {
@@ -27,40 +25,11 @@ func main() {
 		log.Fatalf("Failed to create YouTube client: %v", err)
 	}
 
-	videos, err := client.FetchVideos("golang", time.Now().Add(-24*time.Hour))
-	if err != nil {
-		log.Fatalf("Failed to fetch videos: %v", err)
-	}
+	// Create and start the worker
+	w := worker.NewWorker(db, client, cfg.SearchQuery, cfg.FetchInterval)
+	w.Start()
 
-	for _, video := range videos {
-		dbVideo := &models.Video{
-			ID:           video.Id.VideoId,
-			Title:        video.Snippet.Title,
-			Description:  video.Snippet.Description,
-			PublishedAt:  parseTime(video.Snippet.PublishedAt),
-			ThumbnailURL: video.Snippet.Thumbnails.Default.Url,
-		}
-		err := db.InsertVideo(dbVideo)
-		if err != nil {
-			log.Printf("Failed to insert video: %v", err)
-		} else {
-			log.Printf("Inserted video: %s", dbVideo.Title)
-		}
-	}
-
-	// Fetch and print stored videos
-	storedVideos, err := db.GetVideos(10, 0)
-	if err != nil {
-		log.Fatalf("Failed to get videos: %v", err)
-	}
-
-	log.Println("Stored videos:")
-	for _, v := range storedVideos {
-		log.Printf("- %s (Published: %s)", v.Title, v.PublishedAt)
-	}
-}
-
-func parseTime(timeStr string) time.Time {
-	t, _ := time.Parse(time.RFC3339, timeStr)
-	return t
+	log.Printf("Worker started with query '%s' and interval %v. Press Ctrl+C to stop.", cfg.SearchQuery, cfg.FetchInterval)
+	// Keep the main goroutine running
+	select {}
 }
