@@ -1,6 +1,7 @@
 package youtube
 
 import (
+	"log"
 	"context"
 	"time"
 	"google.golang.org/api/option"
@@ -13,14 +14,15 @@ type Client struct {
 
 func NewClient(apiKey string) (*Client, error) {
 	ctx := context.Background()
-	service,err := youtube.NewService(ctx,option.WithAPIKey(apiKey))
-	if err!= nil {
-		return nil,err
+	service, err := youtube.NewService(ctx, option.WithAPIKey(apiKey))
+	if err != nil {
+		return nil, err
 	}
-	return &Client{service: service},nil
+	return &Client{service: service}, nil
 }
 
 func (c *Client) FetchVideos(query string, publishedAfter time.Time) ([]*youtube.SearchResult, error) {
+	log.Printf("Fetching videos for query: %s, published after: %s", query, publishedAfter.Format(time.RFC3339))
 	call := c.service.Search.List([]string{"id", "snippet"}).
 		Q(query).
 		Type("video").
@@ -30,8 +32,8 @@ func (c *Client) FetchVideos(query string, publishedAfter time.Time) ([]*youtube
 
 	response, err := call.Do()
 	if err != nil {
+		log.Printf("Error fetching videos: %v", err)
 		return nil, err
 	}
-
 	return response.Items, nil
 }

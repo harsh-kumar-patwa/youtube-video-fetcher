@@ -37,7 +37,7 @@ func (w *Worker) Start() {
 
 func (w *Worker) fetchAndStoreVideos() {
 	log.Println("Fetching new videos...")
-	videos, err := w.client.FetchVideos(w.query, time.Now().Add(-w.interval))
+	videos,err := w.client.FetchVideos(w.query, time.Now().Add(-24*time.Hour))
 	if err != nil {
 		log.Printf("Error fetching videos: %v", err)
 		return
@@ -54,8 +54,6 @@ func (w *Worker) fetchAndStoreVideos() {
 		err := w.db.InsertVideo(dbVideo)
 		if err != nil {
 			log.Printf("Error inserting video: %v", err)
-		} else {
-			log.Printf("Inserted video: %s", dbVideo.Title)
 		}
 	}
 }

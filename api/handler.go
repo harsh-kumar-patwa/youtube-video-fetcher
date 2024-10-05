@@ -23,7 +23,7 @@ func (h *Handler) GetVideos(w http.ResponseWriter, r *http.Request) {
 	}
 	videos,err := h.db.GetVideos(limit, offset)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Error fetching videos: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 

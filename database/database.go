@@ -3,7 +3,7 @@ package database
 import (
 	"database/sql"
 	"time"
-
+	"log"
 	"youtube-video-fetcher/models"
 	
 	_ "github.com/mattn/go-sqlite3"
@@ -43,18 +43,22 @@ func (db *DB) InsertVideo(video *models.Video) error {
 		VALUES (?, ?, ?, ?, ?, ?)
 	`, video.ID, video.Title, video.Description, video.PublishedAt, video.ThumbnailURL, time.Now())
 
+	if err != nil {
+		log.Printf("Error inserting video: %v", err)
+	} 
 	return err
 }
 
-func (db *DB) GetVideos(limit, offset int) ([]*models.Video,error) {
+func (db *DB) GetVideos(limit, offset int) ([]*models.Video, error) {
 	rows,err := db.Query(`
 		SELECT id, title, description, published_at, thumbnail_url, created_at
 		FROM videos
 		ORDER BY published_at DESC
 		LIMIT ? OFFSET ?
 	`, limit, offset)
-	if err!=nil {
-		return nil,err
+	if err != nil {
+		log.Printf("Error querying database: %v", err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -63,10 +67,10 @@ func (db *DB) GetVideos(limit, offset int) ([]*models.Video,error) {
 		var video models.Video
 		err := rows.Scan(&video.ID, &video.Title, &video.Description, &video.PublishedAt, &video.ThumbnailURL, &video.CreatedAt)
 		if err != nil {
+			log.Printf("Error scanning row: %v", err)
 			return nil, err
 		}
 		videos = append(videos, &video)
 	}
-
 	return videos, nil
 }
