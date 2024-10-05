@@ -11,34 +11,42 @@ import (
 )
 
 func main() {
-	cfg, err := config.LoadConfig("config.json")
-	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
-	}
+    cfg, err := config.LoadConfig("config.json")
+    if err != nil {
+        log.Fatalf("Failed to load config: %v", err)
+    }
 
-	db, err := database.NewDB("youtube_videos.db")
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	}
-	defer db.Close()
+    db, err := database.NewDB("youtube_videos.db")
+    if err != nil {
+        log.Fatalf("Failed to connect to database: %v", err)
+    }
+    defer db.Close()
 
-	client, err := youtube.NewClient(cfg.YouTubeAPIKeys)
-	if err != nil {
-    log.Fatalf("Failed to create YouTube client: %v", err)
-}
+    // Initialize and start the API server
+    handler := api.NewHandler(db)
+    http.HandleFunc("/videos", handler.GetVideos)
 
-	// Create and start the worker
-	w := worker.NewWorker(db, client, cfg.SearchQuery, cfg.FetchInterval)
-	w.Start()
+    // Start the API server in a goroutine
+    go func() {
+        log.Printf("Starting API server on %s", cfg.ServerPort)
+        log.Fatal(http.ListenAndServe(cfg.ServerPort, nil))
+    }()
 
-	// Create API handler
-	handler := api.NewHandler(db)
+    // Initialize and start the worker
+    client, err := youtube.NewClient(cfg.YouTubeAPIKeys)
+    if err != nil {
+        log.Printf("Failed to create YouTube client: %v", err)
+        // Note: We're logging the error but not fatally exiting
+    }
 
-	// Set up HTTP routes
-	http.HandleFunc("/videos", handler.GetVideos)
+    if client != nil {
+        w := worker.NewWorker(db, client, cfg.SearchQuery, cfg.FetchInterval)
+        go w.Start()
+        log.Printf("Worker started with query '%s' and interval %v", cfg.SearchQuery, cfg.FetchInterval)
+    } else {
+        log.Println("Worker not started due to YouTube client initialization failure")
+    }
 
-	// Start the HTTP server
-	log.Printf("Starting server on %s", cfg.ServerPort)
-	log.Printf("Worker started with query '%s' and interval %v", cfg.SearchQuery, cfg.FetchInterval)
-	log.Fatal(http.ListenAndServe(cfg.ServerPort, nil))
+    // Keep the main goroutine running
+    select {}
 }

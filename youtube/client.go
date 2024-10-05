@@ -5,6 +5,8 @@ import (
 	"time"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
+	"google.golang.org/api/googleapi"
+	"fmt"
 )
 
 type Client struct {
@@ -28,6 +30,7 @@ func NewClient(apiKeys []string) (*Client, error) {
 func (client *Client) FetchVideos(query string, publishedAfter time.Time) ([]*youtube.SearchResult, error) {
     var allResults []*youtube.SearchResult
     pageToken := ""
+    initialIndex := client.currentIndex
     
     for {
         service := client.services[client.currentIndex]
@@ -36,7 +39,7 @@ func (client *Client) FetchVideos(query string, publishedAfter time.Time) ([]*yo
             Type("video").
             Order("date").
             PublishedAfter(publishedAfter.Format(time.RFC3339)).
-            MaxResults(50)  // Increased from default
+            MaxResults(50)
 
         if pageToken != "" {
             call = call.PageToken(pageToken)
@@ -44,13 +47,17 @@ func (client *Client) FetchVideos(query string, publishedAfter time.Time) ([]*yo
 
         response, err := call.Do()
         if err != nil {
-            // If there's an error, try the next API key
-            client.currentIndex = (client.currentIndex + 1) % len(client.services)
-            if client.currentIndex != 0 {
+            if apiErr, ok := err.(*googleapi.Error); ok && apiErr.Code == 403 {
+                // Quota exceeded, try the next API key
+                client.currentIndex = (client.currentIndex + 1) % len(client.services)
+                if client.currentIndex == initialIndex {
+                    // We've tried all keys and they're all exhausted
+                    return nil, fmt.Errorf("all API keys exhausted: %v", err)
+                }
                 // Try again with the next key
                 continue
             }
-            // If we've tried all keys, return the error
+            // If it's not a quota error, return the error
             return nil, err
         }
 
@@ -62,8 +69,7 @@ func (client *Client) FetchVideos(query string, publishedAfter time.Time) ([]*yo
         }
         pageToken = response.NextPageToken
 
-        // Optional: break if we've fetched a certain number of videos
-        if len(allResults) >= 200 {  // Adjust this number as needed
+        if len(allResults) >= 100 {  
             break
         }
     }
