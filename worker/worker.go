@@ -45,11 +45,11 @@ func (worker *Worker) fetchAndStoreVideos() {
 
 	for _, video := range videos {
 		dbVideo := &models.Video{
-			ID:           video.Id.VideoId,
-			Title:        video.Snippet.Title,
-			Description:  video.Snippet.Description,
-			PublishedAt:  parseTime(video.Snippet.PublishedAt),
-			ThumbnailURL: video.Snippet.Thumbnails.Default.Url,
+			ID:video.Id.VideoId,
+			Title:video.Snippet.Title,
+			Description:video.Snippet.Description,
+			PublishedAt:parseTime(video.Snippet.PublishedAt),
+			ThumbnailURL:video.Snippet.Thumbnails.Default.Url,
 		}
 		err := worker.db.InsertVideo(dbVideo)
 		if err != nil {

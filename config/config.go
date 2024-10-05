@@ -6,7 +6,7 @@ import (
 )
 
 type Config struct {
-	YouTubeAPIKey string `json:"youtube_api_key"`
+	YouTubeAPIKeys []string `json:"youtube_api_keys"`
 	SearchQuery string `json:"search_query"`
 	FetchInterval time.Duration `json:"fetch_interval"`
 	ServerPort string `json:"server_port"`

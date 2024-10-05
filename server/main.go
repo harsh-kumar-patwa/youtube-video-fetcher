@@ -22,10 +22,10 @@ func main() {
 	}
 	defer db.Close()
 
-	client, err := youtube.NewClient(cfg.YouTubeAPIKey)
+	client, err := youtube.NewClient(cfg.YouTubeAPIKeys)
 	if err != nil {
-		log.Fatalf("Failed to create YouTube client: %v", err)
-	}
+    log.Fatalf("Failed to create YouTube client: %v", err)
+}
 
 	// Create and start the worker
 	w := worker.NewWorker(db, client, cfg.SearchQuery, cfg.FetchInterval)
