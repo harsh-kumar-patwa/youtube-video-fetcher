@@ -21,9 +21,9 @@ func NewClient(apiKey string) (*Client, error) {
 	return &Client{service: service}, nil
 }
 
-func (c *Client) FetchVideos(query string, publishedAfter time.Time) ([]*youtube.SearchResult, error) {
+func (client *Client) FetchVideos(query string, publishedAfter time.Time) ([]*youtube.SearchResult, error) {
 	log.Printf("Fetching videos for query: %s, published after: %s", query, publishedAfter.Format(time.RFC3339))
-	call := c.service.Search.List([]string{"id", "snippet"}).
+	call := client.service.Search.List([]string{"id", "snippet"}).
 		Q(query).
 		Type("video").
 		Order("date").

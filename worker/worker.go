@@ -25,19 +25,19 @@ func NewWorker(db *database.DB, client *youtube.Client, query string, interval t
 	}
 }
 
-func (w *Worker) Start() {
-	ticker := time.NewTicker(w.interval)
+func (worker *Worker) Start() {
+	ticker := time.NewTicker(worker.interval)
 	go func() {
 		for {
-			w.fetchAndStoreVideos()
+			worker.fetchAndStoreVideos()
 			<-ticker.C
 		}
 	}()
 }
 
-func (w *Worker) fetchAndStoreVideos() {
+func (worker *Worker) fetchAndStoreVideos() {
 	log.Println("Fetching new videos...")
-	videos,err := w.client.FetchVideos(w.query, time.Now().Add(-24*time.Hour))
+	videos,err := worker.client.FetchVideos(worker.query, time.Now().Add(-24*time.Hour))
 	if err != nil {
 		log.Printf("Error fetching videos: %v", err)
 		return
@@ -51,7 +51,7 @@ func (w *Worker) fetchAndStoreVideos() {
 			PublishedAt:  parseTime(video.Snippet.PublishedAt),
 			ThumbnailURL: video.Snippet.Thumbnails.Default.Url,
 		}
-		err := w.db.InsertVideo(dbVideo)
+		err := worker.db.InsertVideo(dbVideo)
 		if err != nil {
 			log.Printf("Error inserting video: %v", err)
 		}

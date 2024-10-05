@@ -3,7 +3,6 @@ package database
 import (
 	"database/sql"
 	"time"
-	"log"
 	"youtube-video-fetcher/models"
 	
 	_ "github.com/mattn/go-sqlite3"
@@ -38,26 +37,23 @@ func NewDB(dataSourceName string) (*DB, error) {
 }
 
 func (db *DB) InsertVideo(video *models.Video) error {
-	_,err := db.Exec(`
-		INSERT OR REPLACE INTO videos (id, title, description, published_at, thumbnail_url, created_at)
+	_, err := db.Exec(`
+		INSERT OR IGNORE INTO videos (id, title, description, published_at, thumbnail_url, created_at)
 		VALUES (?, ?, ?, ?, ?, ?)
 	`, video.ID, video.Title, video.Description, video.PublishedAt, video.ThumbnailURL, time.Now())
 
-	if err != nil {
-		log.Printf("Error inserting video: %v", err)
-	} 
 	return err
 }
 
-func (db *DB) GetVideos(limit, offset int) ([]*models.Video, error) {
-	rows,err := db.Query(`
+func (db *DB) GetVideos(page, perPage int) ([]*models.Video, error) {
+	offset := (page - 1) * perPage
+	rows, err := db.Query(`
 		SELECT id, title, description, published_at, thumbnail_url, created_at
 		FROM videos
 		ORDER BY published_at DESC
 		LIMIT ? OFFSET ?
-	`, limit, offset)
+	`, perPage, offset)
 	if err != nil {
-		log.Printf("Error querying database: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -67,10 +63,16 @@ func (db *DB) GetVideos(limit, offset int) ([]*models.Video, error) {
 		var video models.Video
 		err := rows.Scan(&video.ID, &video.Title, &video.Description, &video.PublishedAt, &video.ThumbnailURL, &video.CreatedAt)
 		if err != nil {
-			log.Printf("Error scanning row: %v", err)
 			return nil, err
 		}
 		videos = append(videos, &video)
 	}
+
 	return videos, nil
+}
+
+func (db *DB) GetTotalVideos() (int, error) {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM videos").Scan(&count)
+	return count, err
 }
