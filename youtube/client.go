@@ -30,19 +30,25 @@ func (client *Client) FetchVideos(query string, publishedAfter time.Time) ([]*yo
     pageToken := ""
     maxVideos := 100 
 
+    // Continue fetching until we reach the maximum number of videos
     for len(allResults) < maxVideos {
+        // Get the current YouTube service from the client's pool
         service := client.services[client.currentIndex]
+
+        // Prepare the search request
         call := service.Search.List([]string{"id", "snippet"}).
             Q(query).
             Type("video").
             Order("date").
             PublishedAfter(publishedAfter.Format(time.RFC3339)).
-            MaxResults(50) 
-
+            MaxResults(50)
+			
+        // Add page token if we're not on the first page
         if pageToken != "" {
             call = call.PageToken(pageToken)
         }
 
+        // Execute the API call
         response, err := call.Do()
         if err != nil {
             // If there's an error, try the next API key
@@ -55,9 +61,10 @@ func (client *Client) FetchVideos(query string, publishedAfter time.Time) ([]*yo
             return nil, err
         }
 
+        // Append the results from this page
         allResults = append(allResults, response.Items...)
 
-        // Check if we've reached the desired number of videos
+        // Check if we've reached or exceeded the desired number of videos
         if len(allResults) >= maxVideos {
             allResults = allResults[:maxVideos] // Trim to exact number if we've exceeded
             break
@@ -65,9 +72,9 @@ func (client *Client) FetchVideos(query string, publishedAfter time.Time) ([]*yo
 
         // Check if there are more pages
         if response.NextPageToken == "" {
-            break
+            break // No more results available
         }
-        pageToken = response.NextPageToken
+        pageToken = response.NextPageToken // Set the token for the next page
     }
 
     return allResults, nil
