@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input, select, button {
+            padding: 8px;
+            margin-right: 10px;
+        }
+        #videoGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .video-card {
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .video-card img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+        .video-info {
+            padding: 15px;
+        }
+        .video-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .video-description {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .video-date {
+            font-size: 0.8em;
+            color: #999;
+        }
+        .pagination {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .pagination button {
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>YouTube Video Dashboard</h1>
+        <div class="controls">
+            <input type="text" id="searchInput" placeholder="Search videos...">
+            <select id="sortSelect">
+                <option value="published_at">Published Date</option>
+                <option value="title">Title</option>
+            </select>
+            <button id="sortOrderBtn">↓</button>
+        </div>
+        <div id="videoGrid"></div>
+        <div class="pagination">
+            <button id="prevBtn">Previous</button>
+            <span id="pageInfo">Page 1 of 1</span>
+            <button id="nextBtn">Next</button>
+        </div>
+    </div>
+
+    <script>
+        let videos = [];
+        let currentPage = 1;
+        let totalPages = 1;
+        let searchTerm = '';
+        let sortBy = 'published_at';
+        let sortOrder = 'desc';
+
+        const videoGrid = document.getElementById('videoGrid');
+        const searchInput = document.getElementById('searchInput');
+        const sortSelect = document.getElementById('sortSelect');
+        const sortOrderBtn = document.getElementById('sortOrderBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const pageInfo = document.getElementById('pageInfo');
+
+        async function fetchVideos() {
+            try {
+                const response = await fetch(`/videos?page=${currentPage}`);
+                const data = await response.json();
+                videos = data.videos;
+                totalPages = data.total_pages;
+                updatePagination();
+                filterAndSortVideos();
+            } catch (error) {
+                console.error('Error fetching videos:', error);
+            }
+        }
+
+        function filterAndSortVideos() {
+            let filtered = videos.filter(video =>
+                video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                video.description.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            filtered.sort((a, b) => {
+                if (a[sortBy] < b[sortBy]) return sortOrder === 'asc' ? -1 : 1;
+                if (a[sortBy] > b[sortBy]) return sortOrder === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            displayVideos(filtered);
+        }
+
+        function displayVideos(videosToDisplay) {
+            videoGrid.innerHTML = '';
+            videosToDisplay.forEach(video => {
+                const videoCard = document.createElement('div');
+                videoCard.className = 'video-card';
+                videoCard.innerHTML = `
+                    <img src="${video.thumbnail_url}" alt="${video.title}">
+                    <div class="video-info">
+                        <div class="video-title">${video.title}</div>
+                        <div class="video-description">${video.description.substring(0, 100)}...</div>
+                        <div class="video-date">Published: ${new Date(video.published_at).toLocaleString()}</div>
+                    </div>
+                `;
+                videoGrid.appendChild(videoCard);
+            });
+        }
+
+        function updatePagination() {
+            pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages;
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            searchTerm = e.target.value;
+            filterAndSortVideos();
+        });
+
+        sortSelect.addEventListener('change', (e) => {
+            sortBy = e.target.value;
+            filterAndSortVideos();
+        });
+
+        sortOrderBtn.addEventListener('click', () => {
+            sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+            sortOrderBtn.textContent = sortOrder === 'asc' ? '↑' : '↓';
+            filterAndSortVideos();
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                fetchVideos();
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                fetchVideos();
+            }
+        });
+
+        // Initial fetch
+        fetchVideos();
+    </script>
+</body>
+</html>

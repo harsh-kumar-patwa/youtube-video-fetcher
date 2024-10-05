@@ -5,8 +5,6 @@ import (
 	"time"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
-	"google.golang.org/api/googleapi"
-	"fmt"
 )
 
 type Client struct {
@@ -30,16 +28,16 @@ func NewClient(apiKeys []string) (*Client, error) {
 func (client *Client) FetchVideos(query string, publishedAfter time.Time) ([]*youtube.SearchResult, error) {
     var allResults []*youtube.SearchResult
     pageToken := ""
-    initialIndex := client.currentIndex
-    
-    for {
+    maxVideos := 100 
+
+    for len(allResults) < maxVideos {
         service := client.services[client.currentIndex]
         call := service.Search.List([]string{"id", "snippet"}).
             Q(query).
             Type("video").
             Order("date").
             PublishedAfter(publishedAfter.Format(time.RFC3339)).
-            MaxResults(50)
+            MaxResults(50) 
 
         if pageToken != "" {
             call = call.PageToken(pageToken)
@@ -47,31 +45,29 @@ func (client *Client) FetchVideos(query string, publishedAfter time.Time) ([]*yo
 
         response, err := call.Do()
         if err != nil {
-            if apiErr, ok := err.(*googleapi.Error); ok && apiErr.Code == 403 {
-                // Quota exceeded, try the next API key
-                client.currentIndex = (client.currentIndex + 1) % len(client.services)
-                if client.currentIndex == initialIndex {
-                    // We've tried all keys and they're all exhausted
-                    return nil, fmt.Errorf("all API keys exhausted: %v", err)
-                }
+            // If there's an error, try the next API key
+            client.currentIndex = (client.currentIndex + 1) % len(client.services)
+            if client.currentIndex != 0 {
                 // Try again with the next key
                 continue
             }
-            // If it's not a quota error, return the error
+            // If we've tried all keys, return the error
             return nil, err
         }
 
         allResults = append(allResults, response.Items...)
+
+        // Check if we've reached the desired number of videos
+        if len(allResults) >= maxVideos {
+            allResults = allResults[:maxVideos] // Trim to exact number if we've exceeded
+            break
+        }
 
         // Check if there are more pages
         if response.NextPageToken == "" {
             break
         }
         pageToken = response.NextPageToken
-
-        if len(allResults) >= 100 {  
-            break
-        }
     }
 
     return allResults, nil

@@ -46,7 +46,7 @@ func main() {
     } else {
         log.Println("Worker not started due to YouTube client initialization failure")
     }
-
+	http.Handle("/", http.FileServer(http.Dir("./static")))
     // Keep the main goroutine running
     select {}
 }
